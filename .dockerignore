@@ -1,0 +1,32 @@
+# ─── Node modules ────────────────────────────────────────────────────────────
+node_modules/
+
+# ─── Source files (not needed in runtime — dist/ is pre-built) ───────────────
+src/
+*.ts
+!dist/**/*.ts
+
+# ─── Secrets — must NEVER enter the image ────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Git metadata ────────────────────────────────────────────────────────────
+.git/
+.gitignore
+
+# ─── Docs and scripts (not needed at runtime) ────────────────────────────────
+docs/
+scripts/
+
+# ─── IDE & OS artifacts ──────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.DS_Store
+Thumbs.db
+
+# ─── Test and dev config ─────────────────────────────────────────────────────
+*.test.*
+*.spec.*
+vite.config.ts
+tsconfig*.json

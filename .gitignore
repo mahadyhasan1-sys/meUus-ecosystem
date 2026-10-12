@@ -1,0 +1,10 @@
+node_modules
+dist
+.DS_Store
+*.log
+
+# Secrets / local environment — never commit live credentials (AGENTS.md §7.4)
+.env
+.env.local
+.env.*.local
+!.env.example

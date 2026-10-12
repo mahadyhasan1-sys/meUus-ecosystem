@@ -1,0 +1,84 @@
+{
+  "$schema": "https://firebase.google.com/schemas/firestore/blueprint/v1",
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "path": "users/{userId}",
+      "fields": {
+        "userId": { "type": "string", "required": true },
+        "email": { "type": "string", "required": true },
+        "displayName": { "type": "string", "required": false },
+        "photoURL": { "type": "string", "required": false },
+        "role": { "type": "string", "required": true, "default": "citizen" },
+        "createdAt": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "MasterSoul": {
+      "collection": "masterSoul",
+      "path": "users/{userId}/profiles/masterSoul",
+      "fields": {
+        "fullName": { "type": "string", "required": true },
+        "district": { "type": "string", "required": true },
+        "primaryRole": { "type": "string", "required": true },
+        "capacities": { "type": "array", "required": true },
+        "immediateNeeds": { "type": "array", "required": true },
+        "visibility": { "type": "string", "required": true },
+        "updatedAt": { "type": "string", "required": true }
+      }
+    },
+    "DlasEvaluation": {
+      "collection": "dlasEvaluations",
+      "path": "users/{userId}/dlasEvaluations/{evalId}",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "lensId": { "type": "string", "required": true },
+        "scores": { "type": "map", "required": true },
+        "journalNotes": { "type": "string", "required": false },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "MarketplaceListing": {
+      "collection": "marketplaceListings",
+      "path": "marketplaceListings/{listingId}",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "authorId": { "type": "string", "required": true },
+        "authorName": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "title": { "type": "string", "required": true },
+        "description": { "type": "string", "required": true },
+        "category": { "type": "string", "required": true },
+        "district": { "type": "string", "required": true },
+        "verificationLevel": { "type": "string", "required": true },
+        "status": { "type": "string", "required": true },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "AiArtifact": {
+      "collection": "aiArtifacts",
+      "path": "users/{userId}/aiArtifacts/{artifactId}",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "type": { "type": "string", "required": true },
+        "prompt": { "type": "string", "required": true },
+        "output": { "type": "string", "required": true },
+        "metadata": { "type": "map", "required": false },
+        "createdAt": { "type": "string", "required": true }
+      }
+    },
+    "ChatMessage": {
+      "collection": "chatMessages",
+      "path": "users/{userId}/chats/{chatId}/messages/{messageId}",
+      "fields": {
+        "id": { "type": "string", "required": true },
+        "userId": { "type": "string", "required": true },
+        "role": { "type": "string", "required": true },
+        "content": { "type": "string", "required": true },
+        "timestamp": { "type": "string", "required": true }
+      }
+    }
+  }
+}
