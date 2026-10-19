@@ -32,21 +32,35 @@ import {
   WifiOff,
   Download,
   Trash2,
+  Mail,
+  Send,
+  UserCheck,
 } from 'lucide-react';
 import {
   offlineStorage,
   type StoredAgent,
   type StoredAutomation,
+  type StoredCommunicationRecord,
 } from '../lib/offlineStorage';
 
 export default function UniversalMeYooOS() {
   const [intentInput, setIntentInput] = useState('');
   const [isOnline, setIsOnline] = useState(offlineStorage.getOnlineStatus());
-  const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'automations' | 'studio'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'agents' | 'automations' | 'communications' | 'studio'>('chat');
   const [agents, setAgents] = useState<StoredAgent[]>([]);
   const [automations, setAutomations] = useState<StoredAutomation[]>([]);
+  const [communications, setCommunications] = useState<StoredCommunicationRecord[]>([]);
   const [systemResponse, setSystemResponse] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Communication Composer Modal State
+  const [showCommModal, setShowCommModal] = useState(false);
+  const [commRecipientEmail, setCommRecipientEmail] = useState('');
+  const [commRecipientName, setCommRecipientName] = useState('');
+  const [commType, setCommType] = useState<StoredCommunicationRecord['type']>('INVITATION');
+  const [commSubject, setCommSubject] = useState('');
+  const [commMessage, setCommMessage] = useState('');
+  const [commContinuation, setCommContinuation] = useState('');
 
   // Agent Builder Modal State
   const [showAgentModal, setShowAgentModal] = useState(false);
@@ -59,6 +73,7 @@ export default function UniversalMeYooOS() {
     const unsub = offlineStorage.subscribeToConnection(setIsOnline);
     setAgents(offlineStorage.getAgents());
     setAutomations(offlineStorage.getAutomations());
+    setCommunications(offlineStorage.getCommunications());
     return unsub;
   }, []);
 
@@ -155,6 +170,34 @@ export default function UniversalMeYooOS() {
     setNewAgentInstructions('');
   };
 
+  const handleSendCommunication = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commRecipientEmail.trim() || !commSubject.trim() || !commMessage.trim()) return;
+
+    offlineStorage.saveCommunicationRecord({
+      recipientEmail: commRecipientEmail.trim(),
+      recipientName: commRecipientName.trim() || undefined,
+      type: commType,
+      subject: commSubject.trim(),
+      message: commMessage.trim(),
+      status: 'SENT',
+      continuationStep: commContinuation.trim() || 'Continuation sequence initiated. Awaiting response to trigger next ecosystem action.',
+    });
+
+    setCommunications(offlineStorage.getCommunications());
+    setShowCommModal(false);
+    setCommRecipientEmail('');
+    setCommRecipientName('');
+    setCommSubject('');
+    setCommMessage('');
+    setCommContinuation('');
+  };
+
+  const handleUpdateCommStatus = (id: string, status: StoredCommunicationRecord['status'], nextStep?: string) => {
+    offlineStorage.updateCommunicationStatus(id, status, nextStep);
+    setCommunications(offlineStorage.getCommunications());
+  };
+
   const samplePrompts = [
     '“I want to learn modern QA engineering.”',
     '“Build me a research agent that summarizes AI developments every Monday.”',
@@ -223,6 +266,7 @@ export default function UniversalMeYooOS() {
             { id: 'chat', label: 'Universal Command (meYoo)', icon: Sparkles },
             { id: 'agents', label: `Agent Registry (${agents.length})`, icon: Bot },
             { id: 'automations', label: `Automations (${automations.length})`, icon: Zap },
+            { id: 'communications', label: `Communications (${communications.length})`, icon: Mail },
             { id: 'studio', label: 'Creation Studio & Pipeline', icon: Layers },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -420,7 +464,101 @@ export default function UniversalMeYooOS() {
           </div>
         )}
 
-        {/* TAB 4: Creation Studio */}
+        {/* TAB 4: Automated Communication System */}
+        {activeTab === 'communications' && (
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Automated Communications & Follow-ups</h3>
+                <p className="text-gray-600 text-sm">
+                  Every invitation, offer, follow-up, and update creates a traceable record and triggers an active continuation sequence.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowCommModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>Compose Offer / Invitation</span>
+              </button>
+            </div>
+
+            <div className="grid gap-4">
+              {communications.map((comm) => (
+                <div key={comm.id} className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 shadow-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                        comm.type === 'INVITATION' ? 'bg-sky-50 border-sky-200 text-sky-800' :
+                        comm.type === 'OFFER' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                        comm.type === 'FOLLOW_UP' ? 'bg-purple-50 border-purple-200 text-purple-800' :
+                        'bg-gray-50 border-gray-200 text-gray-800'
+                      }`}>
+                        {comm.type}
+                      </span>
+                      <span className="text-xs font-mono text-gray-400">ID: {comm.id}</span>
+                      <span className="text-xs text-gray-500 font-mono">· To: <strong className="text-gray-700">{comm.recipientName || comm.recipientEmail}</strong></span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                        comm.status === 'ACCEPTED' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+                        comm.status === 'SENT' ? 'bg-sky-50 border-sky-200 text-sky-800' :
+                        comm.status === 'PENDING' ? 'bg-amber-50 border-amber-200 text-amber-800' :
+                        'bg-gray-100 border-gray-200 text-gray-700'
+                      }`}>
+                        {comm.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-gray-900 text-sm">{comm.subject}</h4>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{comm.message}</p>
+                  </div>
+
+                  {/* Continuation Sequence Box */}
+                  <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 space-y-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 font-semibold text-emerald-800 font-mono text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Active Continuation Sequence:</span>
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{comm.continuationStep}</p>
+                  </div>
+
+                  {/* Quick Action Progression */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-gray-100">
+                    <span className="text-[11px] font-mono text-gray-400">
+                      Triggered: {new Date(comm.triggeredAt).toLocaleDateString()}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {comm.status !== 'ACCEPTED' && (
+                        <button
+                          onClick={() => handleUpdateCommStatus(comm.id, 'ACCEPTED', 'Deliverables initialized into WorkStation project pipeline.')}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-[11px] font-semibold transition"
+                        >
+                          Mark Accepted & Advance
+                        </button>
+                      )}
+                      {comm.status === 'SENT' && (
+                        <button
+                          onClick={() => handleUpdateCommStatus(comm.id, 'RESPONDED', 'Response acknowledged. Follow-up meeting scheduled.')}
+                          className="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-800 text-[11px] font-semibold transition"
+                        >
+                          Mark Responded
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: Creation Studio */}
         {activeTab === 'studio' && (
           <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-6 shadow-sm">
             <div>
@@ -522,6 +660,127 @@ export default function UniversalMeYooOS() {
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold shadow-sm"
                   >
                     Save & Activate
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Communication Composer Modal */}
+        {showCommModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-emerald-600" />
+                  <h3 className="text-lg font-bold text-gray-900">Compose Offer or Invitation</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCommModal(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-sm"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-600">
+                Sending creates an immutable record, links to the user's living profile, and activates a continuation workflow.
+              </p>
+
+              <form onSubmit={handleSendCommunication} className="space-y-3.5">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
+                    <select
+                      value={commType}
+                      onChange={(e) => setCommType(e.target.value as any)}
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                    >
+                      <option value="INVITATION">Invitation</option>
+                      <option value="OFFER">Offer</option>
+                      <option value="FOLLOW_UP">Follow-up</option>
+                      <option value="CONTINUATION">Continuation</option>
+                      <option value="UPDATE">Update</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Recipient Name</label>
+                    <input
+                      type="text"
+                      value={commRecipientName}
+                      onChange={(e) => setCommRecipientName(e.target.value)}
+                      placeholder="e.g. Mahin Ahmed"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Recipient Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={commRecipientEmail}
+                    onChange={(e) => setCommRecipientEmail(e.target.value)}
+                    placeholder="partner@domain.org"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text"
+                    required
+                    value={commSubject}
+                    onChange={(e) => setCommSubject(e.target.value)}
+                    placeholder="e.g. Invitation to meUus Verified Creator Sprint"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Message Content</label>
+                  <textarea
+                    rows={3}
+                    required
+                    value={commMessage}
+                    onChange={(e) => setCommMessage(e.target.value)}
+                    placeholder="Describe the opportunity, terms, or reflection milestone..."
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-emerald-800 mb-1">
+                    Continuation Sequence (What happens after response?)
+                  </label>
+                  <input
+                    type="text"
+                    value={commContinuation}
+                    onChange={(e) => setCommContinuation(e.target.value)}
+                    placeholder="e.g. On acceptance, initialize WorkStation module & assign reviewer."
+                    className="w-full rounded-xl border border-emerald-200 bg-emerald-50/50 px-3 py-2 text-xs text-gray-900 focus:outline-none focus:border-emerald-500 focus:bg-white"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowCommModal(false)}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-xs hover:bg-gray-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm inline-flex items-center gap-1.5"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Send & Trigger Sequence</span>
                   </button>
                 </div>
               </form>

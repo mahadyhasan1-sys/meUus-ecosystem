@@ -58,10 +58,25 @@ export interface StoredDlasSession {
   longitudinalStep: 'ASSESS' | 'UNDERSTAND' | 'PLAN' | 'ACT' | 'MEASURE' | 'REFLECT' | 'REASSESS' | 'GROW';
 }
 
+export interface StoredCommunicationRecord {
+  id: string;
+  recipientEmail: string;
+  recipientName?: string;
+  type: 'INVITATION' | 'OFFER' | 'FOLLOW_UP' | 'CONTINUATION' | 'UPDATE';
+  subject: string;
+  message: string;
+  status: 'PENDING' | 'SENT' | 'RESPONDED' | 'ACCEPTED' | 'DECLINED';
+  continuationStep: string;
+  triggeredAt: string;
+  lastFollowUpAt?: string;
+  metadata?: Record<string, any>;
+}
+
 const STORAGE_KEYS = {
   PROFILE: 'meuus_offline_profile_v1',
   AGENTS: 'meuus_offline_agents_v1',
   AUTOMATIONS: 'meuus_offline_automations_v1',
+  COMMUNICATIONS: 'meuus_offline_communications_v1',
   DLAS_HISTORY: 'meuus_offline_dlas_history_v1',
   JOURNALS: 'meuus_offline_journals_v1',
   SYNC_QUEUE: 'meuus_offline_sync_queue_v1',
@@ -229,6 +244,71 @@ class OfflineStorageEngine {
         status: 'ACTIVE',
         lastRun: '2026-09-01T09:00:00Z',
       },
+    ];
+  }
+
+  // Automated Communication System (Invitations, Offers, Follow-ups, Records)
+  public getCommunications(): StoredCommunicationRecord[] {
+    if (typeof window === 'undefined') return [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.COMMUNICATIONS);
+      return raw ? JSON.parse(raw) : this.getDefaultCommunications();
+    } catch {
+      return this.getDefaultCommunications();
+    }
+  }
+
+  public saveCommunicationRecord(record: Omit<StoredCommunicationRecord, 'id' | 'triggeredAt'>): StoredCommunicationRecord {
+    const list = this.getCommunications();
+    const newRecord: StoredCommunicationRecord = {
+      ...record,
+      id: `comm_${Date.now()}`,
+      triggeredAt: new Date().toISOString(),
+    };
+    list.unshift(newRecord);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.COMMUNICATIONS, JSON.stringify(list));
+    }
+    return newRecord;
+  }
+
+  public updateCommunicationStatus(id: string, status: StoredCommunicationRecord['status'], continuationStep?: string) {
+    const list = this.getCommunications();
+    const target = list.find((c) => c.id === id);
+    if (target) {
+      target.status = status;
+      if (continuationStep) target.continuationStep = continuationStep;
+      target.lastFollowUpAt = new Date().toISOString();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEYS.COMMUNICATIONS, JSON.stringify(list));
+      }
+    }
+  }
+
+  private getDefaultCommunications(): StoredCommunicationRecord[] {
+    return [
+      {
+        id: 'comm_init_001',
+        recipientEmail: 'partner@meuus.org',
+        recipientName: 'Community Ecosystem Partner',
+        type: 'INVITATION',
+        subject: 'Invitation to Join meUus Pilot Hub & DLAS Reflection',
+        message: 'You have been invited to participate in the verified meUus Human Development Ecosystem pilot.',
+        status: 'SENT',
+        continuationStep: 'Awaiting initial orientation and Level-0 DLAS completion.',
+        triggeredAt: '2026-09-20T10:00:00Z',
+      },
+      {
+        id: 'comm_init_002',
+        recipientEmail: 'sme-creator@meuus.app',
+        recipientName: 'Verified SME Contributor',
+        type: 'OFFER',
+        subject: 'Two-Way Marketplace Capacity Exchange Offer',
+        message: 'A capacity exchange offer has been matched against your demonstrated DLAS verified capabilities.',
+        status: 'PENDING',
+        continuationStep: 'Contract and deliverables escrow review pending approval.',
+        triggeredAt: '2026-10-01T14:30:00Z',
+      }
     ];
   }
 
